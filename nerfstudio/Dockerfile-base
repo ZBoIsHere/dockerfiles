@@ -1,0 +1,47 @@
+ARG UBUNTU_VERSION=22.04
+ARG NVIDIA_CUDA_VERSION=11.8.0
+FROM nvidia/cuda:${NVIDIA_CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+# https://qmacro.org/blog/posts/2024/05/13/using-arg-in-a-dockerfile-beware-the-gotcha/
+ARG CUDA_ARCHITECTURES="90;89;86;80;75;70;61"
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_XCB_GL_INTEGRATION=xcb_egl
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+    git \
+    cmake \
+    ninja-build \
+    build-essential \
+    python3.10-dev \
+    python3-pip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --upgrade pip 'setuptools<70.0.0' && \
+    pip install --no-cache-dir torch==2.1.2+cu118 torchvision==0.16.2+cu118 'numpy<2.0.0' --extra-index-url https://download.pytorch.org/whl/cu118 && \
+    git clone --branch master --recursive https://github.com/cvg/Hierarchical-Localization.git /opt/hloc && \
+    cd /opt/hloc && git checkout v1.4 && python3.10 -m pip install --no-cache-dir .
+
+RUN TCNN_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} pip install --no-cache-dir "git+https://github.com/NVlabs/tiny-cuda-nn.git@b3473c81396fe927293bdfd5a6be32df8769927c#subdirectory=bindings/torch" && \
+    pip install --no-cache-dir pycolmap==0.6.1 pyceres==2.1 omegaconf==2.3.0
+
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+    libgl1-mesa-glx \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN export TORCH_CUDA_ARCH_LIST="$(echo "$CUDA_ARCHITECTURES" | tr ';' '\n' | awk '$0 > 70 {print substr($0,1,1)"."substr($0,2)}' | tr '\n' ' ' | sed 's/ $//')"  \
+    && git clone https://github.com/nerfstudio-project/nerfstudio.git \
+    && cd nerfstudio \
+    && git reset --hard bf3664a19a89a61bcac83a9f69cbe2d6dc7c444d \
+    && pip install --no-cache-dir -e . \
+    && cd .. \
+    && git clone https://github.com/nerfstudio-project/gsplat.git --recursive \
+    && cd gsplat \
+    && git reset --hard 5fc940b648e32218ba0979355d7e4d7910f54476 \
+    && pip install --no-cache-dir -e .
+
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+    libglib2.0-dev \
+    ffmpeg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir "git+https://github.com/facebookresearch/pytorch3d.git"
+RUN pip install --no-cache-dir tensorly vdbfusion
+
