@@ -1,0 +1,33 @@
+ARG UBUNTU_VERSION=22.04
+ARG NVIDIA_CUDA_VERSION=11.8.0
+FROM nvidia/cuda:${NVIDIA_CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+    git \
+    wget \
+    cmake \
+    ninja-build \
+    build-essential \
+    python3.10-dev \
+    python3-pip \
+    libgl1-mesa-glx \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root/
+RUN git clone https://github.com/nv-tlabs/NKSR.git
+
+#[install conda]
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2023.07-2-Linux-x86_64.sh --no-check-certificate \
+    && /bin/bash Anaconda3-2023.07-2-Linux-x86_64.sh -b
+
+ENV PATH=$PATH:/root/anaconda3/bin
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN conda update conda \
+    && conda env create -f /root/NKSR/environment.yml \
+    && conda clean --all -y && /root/anaconda3/envs/nksr/bin/pip cache purge
+COPY .bashrc-amend /root/
+RUN cat /root/.bashrc-amend >> /root/.bashrc
+SHELL ["/root/anaconda3/bin/conda", "run", "-n", "nksr", "/bin/bash", "-c"]
+RUN pip install --trusted-host nksr.huangjh.tech nksr -f https://nksr.huangjh.tech/whl/torch-2.0.0+cu118.html
+RUN conda install -n nksr trimesh && conda install -n nksr mkl=2024.0 && conda clean --all -y
+RUN wget --no-check-certificate https://nksr.huangjh.tech/ks.pth -P /root/.cache/torch/hub/checkpoints/
