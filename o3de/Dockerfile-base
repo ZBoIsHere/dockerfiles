@@ -95,28 +95,26 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-inst
 RUN update-alternatives --install /usr/bin/cc cc /usr/bin/clang 100 \
     && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100
 
-# O3DE 2310.1
-ENV O3DE_HASH=c89678d6ba58271c76650e7aec180a3196f24f02
+# O3DE 2310.3
+ENV O3DE_TAG=2310.3
 
-# ROS2GEM 2310.1
-ENV O3DE_EXTRAS_HASH=f21f48125a24517bd6c29fd95ee97a85d546f675
+# ROS2GEM 2310.3
+ENV ROS2GEM_TAG=2310.3
 ENV PROJECT_NAME=eail
 
 ENV WORKDIR=/data/workspace
 WORKDIR $WORKDIR
 
 # Install o3de
-RUN git clone https://github.com/o3de/o3de.git \
+RUN git clone --branch ${O3DE_TAG} https://github.com/o3de/o3de.git \
     && cd o3de \
-    && git checkout ${O3DE_HASH} \
     && git lfs install \
     && git lfs pull \
     && python/get_python.sh
 
 # Install o3de-extras
-RUN git clone https://github.com/o3de/o3de-extras.git \
+RUN git clone --branch ${ROS2GEM_TAG} https://github.com/o3de/o3de-extras.git \
     && cd o3de-extras \
-    && git checkout ${O3DE_EXTRAS_HASH} \
     && git lfs install \
     && git lfs pull
 
@@ -132,7 +130,11 @@ RUN ./o3de/scripts/o3de.sh create-project \
 WORKDIR ${WORKDIR}/${PROJECT_NAME}
 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh \
-    && cmake -B build/linux -S . -G "Ninja Multi-Config" -DLY_DISABLE_TEST_MODULES=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DLY_STRIP_DEBUG_SYMBOLS=ON
+    && cmake -B build/linux -S . -G "Ninja Multi-Config" \
+    -DLY_DISABLE_TEST_MODULES=ON \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DLY_STRIP_DEBUG_SYMBOLS=ON \
+    -DAZ_USE_PHYSX5:BOOL=ON
 
 WORKDIR /root
 
