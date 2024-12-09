@@ -1,5 +1,5 @@
-# make sure the host drivers >= cuda11.8 corresponding version
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+# make sure the host drivers >= cuda11.7 corresponding version
+FROM nvidia/cuda:11.7.1-devel-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 

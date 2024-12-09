@@ -1,5 +1,5 @@
 ARG UBUNTU_VERSION=22.04
-ARG NVIDIA_CUDA_VERSION=11.8.0
+ARG NVIDIA_CUDA_VERSION=11.7.1
 FROM nvidia/cuda:${NVIDIA_CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 # https://qmacro.org/blog/posts/2024/05/13/using-arg-in-a-dockerfile-beware-the-gotcha/
 ARG CUDA_ARCHITECTURES="90;89;86;80;75;70;61"

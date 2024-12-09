@@ -1,0 +1,57 @@
+ARG UBUNTU_VERSION=20.04
+ARG NVIDIA_CUDA_VERSION=11.3.0
+FROM nvidia/cudagl:${NVIDIA_CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+    build-essential \
+    git \
+    cmake \
+    curl \
+    vim \
+    ca-certificates \
+    libjpeg-dev \
+    libpng-dev \
+    libglfw3-dev \
+    libglm-dev \
+    libx11-dev \
+    libomp-dev \
+    libegl1-mesa-dev \
+    pkg-config \
+    wget \
+    zip \
+    unzip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root/
+
+#[install conda]
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2023.07-2-Linux-x86_64.sh --no-check-certificate \
+    && /bin/bash Anaconda3-2023.07-2-Linux-x86_64.sh -b
+
+ENV PATH=$PATH:/root/anaconda3/bin
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN conda update conda \
+    && conda create -n vlnce python=3.7 cmake=3.14 \
+    && conda clean --all -y && /root/anaconda3/envs/vlnce/bin/pip cache purge
+COPY .bashrc-amend /root/
+RUN cat /root/.bashrc-amend >> /root/.bashrc
+SHELL ["/root/anaconda3/bin/conda", "run", "-n", "vlnce", "/bin/bash", "-c"]
+
+RUN git clone --branch v0.1.7 https://github.com/facebookresearch/habitat-sim.git \
+    && cd habitat-sim \
+    && pip install --no-cache-dir -r requirements.txt \
+    && python setup.py install --headless
+
+RUN git clone --branch v0.1.7 https://github.com/facebookresearch/habitat-lab.git \
+    && cd habitat-lab \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r habitat_baselines/rl/requirements.txt \
+    && pip install --no-cache-dir -r habitat_baselines/rl/ddppo/requirements.txt \
+    && python setup.py develop --all
+
+RUN git clone https://github.com/jacobkrantz/VLN-CE.git \
+    && cd VLN-CE \
+    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir shapely==2.0.6 \
+    && pip install --no-cache-dir scikit-learn==1.0.2
+
